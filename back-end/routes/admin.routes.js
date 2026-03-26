@@ -9,7 +9,7 @@ const {
   uploadStudentsCSV,
   getAdminStats
 } = require('../controllers/admin.controller')
-
+const facultyCtrl = require('../controllers/faculty.controller')
 // ✅ Change this line
 const { verifyToken } = require('../middleware/auth.middleware')
 const { authorize } = require('../middleware/role.middleware')
@@ -28,5 +28,8 @@ router.get('/users',                    getAllUsers)
 router.post('/users',                   createUser)
 router.put('/users/:id/toggle',         toggleUserStatus)
 router.post('/upload-students', upload.single('file'), uploadStudentsCSV)
+router.get('/faculty',      facultyCtrl.getAllFaculty)    // List all faculty
+router.post('/faculty',     facultyCtrl.createFaculty)   // Create faculty + User
+router.delete('/faculty/:id', facultyCtrl.deleteFaculty) // Delete faculty + User
 
 module.exports = router

@@ -1,31 +1,25 @@
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const facultyCtrl = require('../controllers/faculty.controller');
-const { verifyToken, isFaculty, isAdmin } = require('../middleware/auth.middleware');
+const express  = require('express')
+const router   = express.Router()
+const {
+  getFacultyProfile,
+  getStudents,
+  getAttendance,
+  markAttendance,
+  getMarks,
+  uploadMarks,
+  manualMarks,
+} = require('../controllers/faculty.controller')
+const { verifyToken } = require('../middleware/auth.middleware')
+const upload = require('../middleware/upload.middleware')
 
-// Store file in memory for xlsx parsing
-const upload = multer({ storage: multer.memoryStorage() });
+router.use(verifyToken)
 
-// ─── Public ───────────────────────────────────────────────────────────────────
-router.post('/login', facultyCtrl.loginFaculty);
+router.get('/profile',       getFacultyProfile)
+router.get('/students',      getStudents)
+router.get('/attendance',    getAttendance)
+router.get('/marks',         getMarks)
+router.post('/attendance',   markAttendance)
+router.post('/upload-marks', upload.single('file'), uploadMarks)
+router.post('/manual-marks', manualMarks)
 
-// ─── Faculty routes (JWT + isFaculty) ─────────────────────────────────────────
-router.get('/students',         verifyToken, isFaculty, facultyCtrl.getStudents);
-router.get('/dashboard',        verifyToken, isFaculty, facultyCtrl.getDashboardStats);
-
-router.post('/attendance',      verifyToken, isFaculty, facultyCtrl.markAttendance);
-router.get('/attendance',       verifyToken, isFaculty, facultyCtrl.getAttendance);
-router.get('/attendance/summary/:enrollmentNumber', verifyToken, isFaculty, facultyCtrl.getStudentAttendanceSummary);
-
-router.post('/manual-marks',    verifyToken, isFaculty, facultyCtrl.enterManualMarks);
-router.post('/upload-marks',    verifyToken, isFaculty, upload.single('marksFile'), facultyCtrl.uploadMarksExcel);
-router.get('/marks',            verifyToken, isFaculty, facultyCtrl.getMarks);
-
-// ─── Admin routes (JWT + isAdmin) ─────────────────────────────────────────────
-router.get('/admin/faculty',           verifyToken, isAdmin, facultyCtrl.getAllFaculty);
-router.post('/admin/faculty',          verifyToken, isAdmin, facultyCtrl.createFaculty);
-router.put('/admin/faculty/:facultyId',    verifyToken, isAdmin, facultyCtrl.updateFaculty);
-router.delete('/admin/faculty/:facultyId', verifyToken, isAdmin, facultyCtrl.deleteFaculty);
-
-module.exports = router;
+module.exports = router

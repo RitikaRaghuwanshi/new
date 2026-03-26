@@ -1,0 +1,456 @@
+/* ═══════════════════════════════════════════════════════════════════
+   AcadPlace — Faculty Module Styles
+   Matches your existing purple (#7c3aed) brand theme exactly
+   Add to: src/styles/faculty.css  and import in FacultyDashboard.jsx
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── Layout wrapper ────────────────────────────────────────────── */
+.fac-page {
+  padding: 1.75rem 2rem;
+  max-width: 1200px;
+  animation: fadein .3s ease;
+}
+@keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+
+/* ── Toast notification ────────────────────────────────────────── */
+.fac-toast {
+  position: fixed; top: 1.25rem; right: 1.25rem; z-index: 9999;
+  padding: .75rem 1.25rem; border-radius: 10px;
+  font-size: .875rem; font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  animation: slide-in .3s ease;
+}
+.fac-toast.success { background: #f0fdf4; color: #16a34a; border: 1.5px solid #86efac; }
+.fac-toast.error   { background: #fff1f2; color: #dc2626; border: 1.5px solid #fca5a5; }
+@keyframes slide-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; } }
+
+/* ── Header ────────────────────────────────────────────────────── */
+.fac-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+.fac-header-left  { display: flex; align-items: center; gap: 1rem; }
+.fac-avatar {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.fac-header-title { font-size: 1.4rem; font-weight: 700; letter-spacing: -.03em; color: #1e1b4b; }
+.fac-header-sub   { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-top: .3rem; }
+
+.fac-subject-badge {
+  font-size: .75rem; font-weight: 600; padding: .25rem .75rem;
+  border-radius: 99px;
+}
+.fac-code-badge {
+  font-size: .75rem; background: #f1f5f9; color: #475569;
+  padding: .25rem .6rem; border-radius: 99px; font-family: monospace;
+}
+.fac-role-badge {
+  font-size: .7rem; background: #ede9fe; color: #7c3aed;
+  padding: .2rem .6rem; border-radius: 99px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+
+/* Faculty member pills */
+.fac-member-pills { display: flex; gap: .5rem; flex-wrap: wrap; }
+.fac-pill {
+  font-size: .8rem; font-weight: 600; padding: .35rem .9rem;
+  border-radius: 99px; background: #f1f5f9; color: #64748b;
+  border: 1.5px solid #e2e8f0; cursor: default;
+  transition: all .2s;
+}
+.fac-pill.active { box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+
+/* ── Stat cards row ────────────────────────────────────────────── */
+.fac-stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1rem; margin-bottom: 1.75rem;
+}
+@media (max-width: 900px) { .fac-stats-row { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── Tabs ──────────────────────────────────────────────────────── */
+.fac-tabs {
+  display: flex; gap: 0;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+.fac-tab {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .7rem 1.25rem; border: none; background: none;
+  font-size: .9rem; font-weight: 500; color: #64748b; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: color .15s, border-color .15s;
+}
+.fac-tab:hover { color: #1e293b; }
+
+/* ── Section card ──────────────────────────────────────────────── */
+.fac-section-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.fac-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.fac-section-header h3 { font-size: 1rem; font-weight: 700; color: #1e293b; }
+.fac-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 99px;
+  background: #ede9fe; color: #7c3aed; font-size: .75rem; font-weight: 700;
+  margin-left: .4rem;
+}
+
+/* ── Search bar ────────────────────────────────────────────────── */
+.fac-search {
+  display: flex; align-items: center; gap: .4rem;
+  background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 99px;
+  padding: .4rem .9rem;
+}
+.fac-search input {
+  border: none; background: none; outline: none;
+  font-size: .875rem; width: 200px;
+}
+.fac-search button { background: none; border: none; cursor: pointer; color: #94a3b8; font-size: .9rem; }
+
+/* ── Table ─────────────────────────────────────────────────────── */
+.fac-table-wrap { overflow-x: auto; }
+.fac-table {
+  width: 100%; border-collapse: collapse; font-size: .875rem;
+}
+.fac-table th {
+  padding: .75rem 1rem; text-align: left;
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: #94a3b8; background: #f8fafc; border-bottom: 1.5px solid #e2e8f0;
+}
+.fac-table td {
+  padding: .8rem 1rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle;
+}
+.fac-table tbody tr:last-child td { border-bottom: none; }
+.fac-table tbody tr:hover { background: #fafafa; }
+
+.enroll-code {
+  font-family: 'Courier New', monospace; font-size: .78rem; font-weight: 700;
+  background: #1e293b; color: #7dd3fc;
+  padding: .22rem .55rem; border-radius: 6px;
+}
+.enroll-code.sm { font-size: .7rem; padding: .15rem .4rem; }
+.fw-600 { font-weight: 600; }
+.muted  { color: #94a3b8; }
+.text-center { text-align: center; }
+.p-8 { padding: 2rem; }
+
+.cgpa-chip {
+  font-size: .8rem; font-weight: 700; padding: .22rem .55rem; border-radius: 7px;
+}
+.cgpa-chip.high { background: #dcfce7; color: #16a34a; }
+.cgpa-chip.mid  { background: #fef3c7; color: #d97706; }
+.cgpa-chip.low  { background: #fee2e2; color: #dc2626; }
+
+.grade-badge {
+  font-size: .75rem; font-weight: 700; background: #ede9fe; color: #7c3aed;
+  padding: .2rem .5rem; border-radius: 6px; font-family: monospace;
+}
+.via-badge {
+  font-size: .72rem; font-weight: 600; padding: .2rem .5rem; border-radius: 99px;
+  text-transform: capitalize;
+}
+.via-badge.excel  { background: #dcfce7; color: #16a34a; }
+.via-badge.manual { background: #dbeafe; color: #1d4ed8; }
+
+.skills-list { display: flex; flex-wrap: wrap; gap: .25rem; }
+.skill-tag {
+  font-size: .7rem; background: #f1f5f9; color: #475569;
+  padding: .15rem .45rem; border-radius: 99px;
+}
+.skill-tag.muted { background: #f8fafc; }
+
+/* ── Sub-tabs ──────────────────────────────────────────────────── */
+.fac-subtabs {
+  display: flex; border-bottom: 2px solid #f1f5f9; padding: 0 1rem;
+}
+.fac-subtabs button {
+  background: none; border: none; padding: .8rem 1rem;
+  font-size: .875rem; font-weight: 500; color: #64748b;
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: color .15s, border-color .15s;
+}
+.fac-subtabs button:hover { color: #1e293b; }
+
+/* ── Attendance ────────────────────────────────────────────────── */
+.att-controls {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 1rem;
+  padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9;
+}
+.att-date-field { display: flex; flex-direction: column; gap: .25rem; }
+.att-date-field label {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: #94a3b8;
+}
+.att-date-field input {
+  font-size: .875rem; border: 1.5px solid #e2e8f0; border-radius: 8px;
+  padding: .45rem .75rem; outline: none;
+  transition: border-color .15s;
+}
+.att-date-field input:focus { border-color: var(--focus-color, #7c3aed); }
+
+.att-stats  { display: flex; gap: .5rem; margin-left: auto; }
+.att-stat   { font-size: .82rem; font-weight: 600; padding: .3rem .75rem; border-radius: 99px; }
+.att-stat.present { background: #dcfce7; color: #16a34a; }
+.att-stat.absent  { background: #fee2e2; color: #dc2626; }
+
+.att-bulk { display: flex; gap: .4rem; }
+.att-bulk-btn {
+  font-size: .8rem; font-weight: 600; padding: .4rem .9rem;
+  border-radius: 8px; cursor: pointer; border: 2px solid; background: none;
+  transition: background .15s, color .15s;
+}
+.att-bulk-btn.green { border-color: #16a34a; color: #16a34a; }
+.att-bulk-btn.green:hover { background: #16a34a; color: #fff; }
+.att-bulk-btn.red   { border-color: #dc2626; color: #dc2626; }
+.att-bulk-btn.red:hover   { background: #dc2626; color: #fff; }
+
+.att-subject-line {
+  padding: .6rem 1.5rem; font-size: .85rem; color: #64748b;
+  background: #f8fafc; border-bottom: 1px solid #f1f5f9;
+}
+
+.att-list { padding: .75rem 1rem; display: flex; flex-direction: column; gap: .4rem; }
+.att-row {
+  display: flex; align-items: center; gap: 1rem;
+  padding: .75rem 1rem; border-radius: 10px;
+  cursor: pointer; border: 1.5px solid transparent;
+  transition: background .15s, border-color .15s;
+}
+.att-row.present { background: #f0fdf4; border-color: #bbf7d0; }
+.att-row.absent  { background: #fff1f2; border-color: #fecdd3; }
+.att-student-info { display: flex; align-items: center; gap: .75rem; flex: 1; min-width: 0; }
+
+/* Toggle */
+.toggle-sw {
+  width: 44px; height: 24px; border-radius: 99px;
+  background: #cbd5e1; position: relative; flex-shrink: 0;
+  transition: background .2s;
+}
+.toggle-sw.on { /* color set inline via accentColor */ }
+.toggle-sw.off { background: #cbd5e1; }
+.toggle-knob {
+  position: absolute; top: 3px; width: 18px; height: 18px;
+  border-radius: 50%; background: #fff;
+  transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle-sw.on  .toggle-knob { left: 23px; }
+.toggle-sw.off .toggle-knob { left: 3px;  }
+
+.att-label { font-size: .8rem; font-weight: 600; min-width: 4rem; text-align: right; }
+.att-label.present { color: #16a34a; }
+.att-label.absent  { color: #dc2626; }
+.att-footer { padding: 1.25rem 1.5rem; border-top: 1px solid #f1f5f9; }
+
+.status-chip {
+  font-size: .75rem; font-weight: 600; padding: .22rem .6rem; border-radius: 99px;
+}
+.status-chip.present { background: #dcfce7; color: #16a34a; }
+.status-chip.absent  { background: #fee2e2; color: #dc2626; }
+
+/* ── Primary button ────────────────────────────────────────────── */
+.fac-primary-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: .65rem 1.5rem; border: none; border-radius: 10px;
+  color: #fff; font-size: .9rem; font-weight: 600; cursor: pointer;
+  transition: opacity .15s, transform .1s; min-width: 160px;
+}
+.fac-primary-btn:hover:not(:disabled) { opacity: .9; }
+.fac-primary-btn:active:not(:disabled){ transform: scale(.98); }
+.fac-primary-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Marks form ────────────────────────────────────────────────── */
+.marks-form-wrap {
+  padding: 1.5rem;
+}
+.marks-form-card {
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+  padding: 1.5rem; max-width: 560px;
+}
+.marks-form-card.wide { max-width: 680px; }
+.marks-form-title { font-size: 1rem; font-weight: 700; margin-bottom: .25rem; color: #1e293b; }
+.marks-form-sub   { font-size: .85rem; color: #64748b; margin-bottom: 1.25rem; }
+
+.marks-form-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: .9rem; margin-bottom: 1.25rem;
+}
+
+.fac-field { display: flex; flex-direction: column; gap: .3rem; }
+.fac-field.full { grid-column: 1 / -1; }
+.fac-field label {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: #94a3b8;
+}
+.fac-field input,
+.fac-field select {
+  font-size: .9rem; padding: .55rem .875rem;
+  border: 1.5px solid #e2e8f0; border-radius: 8px; outline: none;
+  background: #fff; color: #1e293b;
+  transition: border-color .15s;
+}
+.fac-field input:focus,
+.fac-field select:focus {
+  border-color: var(--focus, #7c3aed);
+}
+
+/* ── Excel drop zone ───────────────────────────────────────────── */
+.excel-hint {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 1rem; margin-bottom: 1.25rem; font-size: .82rem; color: #475569;
+}
+.excel-hint p { margin-bottom: .7rem; }
+.sample-table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: .78rem; }
+.sample-table th { background: #1e293b; color: #7dd3fc; padding: .35rem .55rem; text-align: left; }
+.sample-table td { padding: .3rem .55rem; border-top: 1px solid #f1f5f9; }
+
+.dropzone {
+  border: 2px dashed #cbd5e1; border-radius: 12px;
+  padding: 2.5rem 1rem; text-align: center; cursor: pointer;
+  transition: border-color .2s, background .2s; margin-bottom: 1.25rem;
+}
+.dropzone:hover    { border-color: #7c3aed; background: #faf5ff; }
+.drop-icon         { font-size: 2.25rem; display: block; margin-bottom: .5rem; }
+.drop-label        { font-weight: 600; font-size: .95rem; color: #1e293b; margin-bottom: .25rem; }
+.drop-hint         { font-size: .8rem; color: #94a3b8; }
+.drop-filename     { font-weight: 700; font-size: 1rem; margin-bottom: .25rem; }
+
+.upload-result {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 1rem; margin-top: 1rem; font-size: .875rem;
+  display: flex; flex-direction: column; gap: .35rem;
+}
+.not-found-list { font-family: monospace; color: #dc2626; }
+
+/* ── Overview ──────────────────────────────────────────────────── */
+.fac-overview { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+@media (max-width: 800px) { .fac-overview { grid-template-columns: 1fr; } }
+
+.fac-overview-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+  padding: 1.5rem; border-top: 4px solid var(--card-accent, #7c3aed);
+}
+.fac-overview-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: 1rem; color: #1e293b; }
+
+.fac-info-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
+}
+.fac-info-grid > div {
+  display: flex; flex-direction: column; gap: .15rem;
+}
+.fac-info-grid span { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; font-weight: 600; }
+.fac-info-grid strong { font-size: .9rem; color: #1e293b; }
+
+.fac-quick-actions { display: flex; flex-direction: column; gap: .6rem; }
+.fac-quick-btn {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .7rem 1rem; border-radius: 10px; cursor: pointer;
+  font-size: .875rem; font-weight: 500; text-align: left;
+  background: #f8fafc; border: 1.5px solid #e2e8f0; color: #1e293b;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.fac-quick-btn:hover {
+  background: var(--btn-color, #7c3aed);
+  border-color: var(--btn-color, #7c3aed);
+  color: #fff;
+}
+
+/* ── Admin Slot Grid ───────────────────────────────────────────── */
+.slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; }
+@media (max-width: 900px) { .slot-grid { grid-template-columns: 1fr; } }
+
+.slot-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+  padding: 1.25rem; border-top: 4px solid var(--slot, #7c3aed);
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.slot-top   { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
+.slot-code  { font-family: monospace; font-size: .8rem; font-weight: 700; }
+.slot-status.filled { font-size: .72rem; font-weight: 700; color: #16a34a; }
+.slot-status.empty  { font-size: .72rem; font-weight: 700; color: #94a3b8; }
+.slot-subject { font-size: .95rem; font-weight: 700; color: #1e293b; margin-bottom: 1rem; line-height: 1.3; }
+
+.slot-assigned { display: flex; align-items: center; gap: .75rem; position: relative; }
+.slot-avatar {
+  width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 700; color: #fff;
+}
+.slot-name  { font-weight: 700; font-size: .9rem; }
+.slot-id    { font-size: .75rem; font-family: monospace; color: #64748b; }
+.slot-email { font-size: .75rem; color: #94a3b8; }
+.slot-del-btn {
+  margin-left: auto; background: none; border: 1px solid #fca5a5;
+  color: #dc2626; padding: .3rem .5rem; border-radius: 7px;
+  font-size: .85rem; cursor: pointer; transition: background .15s;
+}
+.slot-del-btn:hover { background: #fee2e2; }
+
+.slot-vacant { display: flex; flex-direction: column; gap: .6rem; }
+.slot-vacant p { font-size: .85rem; color: #94a3b8; }
+.slot-assign-btn {
+  align-self: flex-start; padding: .4rem .9rem; border-radius: 8px;
+  border: 2px solid; background: none; font-size: .8rem; font-weight: 600;
+  cursor: pointer; transition: background .15s, color .15s;
+}
+.slot-assign-btn:hover { opacity: .8; }
+
+.del-btn {
+  background: none; border: 1px solid #e2e8f0; color: #dc2626;
+  padding: .3rem .7rem; border-radius: 7px; font-size: .8rem;
+  cursor: pointer; transition: background .15s;
+}
+.del-btn:hover { background: #fee2e2; border-color: #fca5a5; }
+
+/* ── Modal ─────────────────────────────────────────────────────── */
+.fac-modal-bg {
+  position: fixed; inset: 0; background: rgba(15,23,42,.55);
+  display: flex; align-items: center; justify-content: center; z-index: 9998;
+  backdrop-filter: blur(4px);
+}
+.fac-modal {
+  background: #fff; border-radius: 16px;
+  width: 92%; max-width: 540px; padding: 1.75rem;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2); max-height: 90vh; overflow-y: auto;
+  animation: modal-in .25s ease;
+}
+@keyframes modal-in { from { opacity: 0; transform: scale(.95); } to { opacity: 1; } }
+
+.fac-modal-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;
+}
+.fac-modal-head h3 { font-size: 1.1rem; font-weight: 700; color: #1e293b; }
+.fac-modal-head button { background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #94a3b8; }
+.fac-modal-foot {
+  display: flex; justify-content: flex-end; gap: .75rem; margin-top: 1.5rem;
+}
+.cancel-btn {
+  padding: .65rem 1.25rem; border: 1.5px solid #e2e8f0; border-radius: 10px;
+  background: none; color: #64748b; font-size: .9rem; font-weight: 600; cursor: pointer;
+}
+
+/* ── Loader / Empty ────────────────────────────────────────────── */
+.fac-loader {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 3rem; gap: 1rem; color: #94a3b8;
+}
+.fac-spinner {
+  width: 34px; height: 34px; border: 3px solid #e2e8f0;
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.fac-empty {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 3rem; color: #94a3b8; gap: .6rem;
+}
+.fac-empty-icon { font-size: 2.5rem; }

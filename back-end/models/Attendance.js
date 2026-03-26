@@ -8,7 +8,6 @@ const attendanceSchema = new mongoose.Schema({
   status:           { type: String, enum: ['Present', 'Absent'], required: true }
 }, { timestamps: true })
 
-// Prevent duplicate attendance for same student+subject+date
 attendanceSchema.index({ enrollmentNumber: 1, subject: 1, date: 1 }, { unique: true })
 
 module.exports = mongoose.model('Attendance', attendanceSchema)

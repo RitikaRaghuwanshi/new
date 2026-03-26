@@ -118,8 +118,10 @@ export default function UpdateProfile() {
   const saveSkills = async () => {
     setSavingSkills(true)
     try {
-      await API.put(`/students/${user.enrollmentNumber}`, { technicalSkills, softSkills, programmingLanguages, achievements })
-      toast.success('Skills saved!')
+      await API.put(`/students/${user.enrollmentNumber}`, {
+        technicalSkills, softSkills, programmingLanguages, achievements
+      })
+      toast.success('Profile saved!')
     } catch (err) { toast.error(err?.response?.data?.message || 'Save failed') }
     finally { setSavingSkills(false) }
   }
@@ -371,9 +373,9 @@ export default function UpdateProfile() {
                     <input type="number" className="form-input" placeholder="e.g. 10000"
                       value={newIntern.stipend} onChange={e => setNewIntern({ ...newIntern, stipend: e.target.value })} />
                   </div>
-                  <div className="form-group" style={{ justifyContent: 'flex-end' }}>
+                  <div className="form-group">
                     <label className="form-label">Status</label>
-                    <select className="form-input" value={newIntern.isCompleted} onChange={e => setNewIntern({ ...newIntern, isCompleted: e.target.value === 'true' })}>
+                    <select className="form-input" value={String(newIntern.isCompleted)} onChange={e => setNewIntern({ ...newIntern, isCompleted: e.target.value === 'true' })}>
                       <option value="false">Ongoing</option>
                       <option value="true">Completed</option>
                     </select>
@@ -412,7 +414,7 @@ export default function UpdateProfile() {
                 ))}
               </div>
             )}
-            <TagInput values={achievements} onChange={setAchievements} placeholder="e.g. Won Hackathon 2024, Published research paper" />
+            <TagInput values={achievements} onChange={setAchievements} placeholder="e.g. Won Hackathon 2024" />
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
               <button className="btn btn-primary" onClick={saveSkills} disabled={savingSkills}>
                 {savingSkills ? <><div className="spinner" style={{ width: 14, height: 14 }} /> Saving…</> : <><Save size={14} /> Save Achievements</>}
@@ -421,19 +423,6 @@ export default function UpdateProfile() {
           </div>
         )}
       </div>
-{/* SEM 8 MARKS */}
-<div className="card" style={{ marginBottom: 16 }}>
-  <SectionHeader
-    icon={Award}
-    title="Semester 8 — Subject Marks"
-    color="var(--purple)"
-    open={open.sem8}
-    onToggle={() => toggle('sem8')}
-  />
-  {open.sem8 && (
-    <Sem8Marks enrollmentNumber={user?.enrollmentNumber} />
-  )}
-</div>
     </div>
   )
 }
