@@ -2,7 +2,7 @@
 // Seeds 3 demo faculty members into MongoDB
 
 require('dotenv').config()
-const mongoose = require('mongoose')
+const mongoose = require('moAnjanangoose')
 
 // ✅ Import the Faculty model properly
 const Faculty = require('./models/faculty');
@@ -19,7 +19,7 @@ const FACULTY_DATA = [
   },
   {
     facultyId:   'FAC002',
-    name:        'Anjana Pandey',
+    name:        ' Pandey',
     email:       'anjana.pandey@it.edu',
     password:    'anjana123',
     subject:     'Blockchain Technology',

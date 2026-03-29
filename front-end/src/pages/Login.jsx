@@ -26,13 +26,10 @@ export default function Login() {
 
   const quickFill = (role) => {
     const creds = {
-      admin:   { email: 'admin@it.edu',              password: 'admin123'   },
-      tpo:     { email: 'tpo@it.edu',                password: 'tpo123'     },
+      admin:   { email: 'admin@it.edu',                 password: 'admin123'   },
+      tpo:     { email: 'tpo@it.edu',                   password: 'tpo123'     },
       student: { email: 'muskan.dhakariya.1040@it.edu', password: 'student123' },
-      // Faculty quick fills
-      'faculty-1': { email: 'roopam@it.edu',          password: 'roopam123'  },
-      'faculty-2': { email: 'anjana.pandey@it.edu',   password: 'anjana123'  },
-      'faculty-3': { email: 'anjana.patney@it.edu',   password: 'patney123'  },
+      faculty: { email: 'roopam@it.edu',                password: 'roopam123'  },
     }
     if (creds[role]) {
       setEmail(creds[role].email)
@@ -43,14 +40,14 @@ export default function Login() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-base)', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)`, backgroundSize: '60px 60px', opacity: 0.4 }} />
-      <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '60%', height: '60%', background: 'radial-gradient(ellipse, rgba(245,166,35,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '60%', height: '60%', background: 'radial-gradient(ellipse, rgba(124,58,237,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
       {/* Left Panel */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px 80px', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 480 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 48 }}>
             <div style={{ width: 48, height: 48, background: 'var(--accent)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <GraduationCap size={26} color="#0a0a0b" strokeWidth={2.5} />
+              <GraduationCap size={26} color="#fff" strokeWidth={2.5} />
             </div>
             <div>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.4rem', letterSpacing: '-0.03em' }}>AcadPlace</div>
@@ -74,38 +71,42 @@ export default function Login() {
       </div>
 
       {/* Right Panel — Login Form */}
-      <div style={{ width: 480, minWidth: 420, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 48px', background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)', position: 'relative', zIndex: 1, overflowY: 'auto' }}>
-        <div style={{ width: '100%', maxWidth: 360 }}>
+      <div style={{ width: 460, minWidth: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 48px', background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)', position: 'relative', zIndex: 1, overflowY: 'auto' }}>
+        <div style={{ width: '100%', maxWidth: 340 }}>
           <h2 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 6 }}>Sign in</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 24 }}>Access your dashboard</p>
 
-          {/* Quick Demo Login */}
+          {/* Quick Demo Login — 4 roles in one row */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: 8 }}>Quick demo — Admin / TPO / Student</div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-              {['admin', 'tpo', 'student'].map(role => (
-                <button key={role} onClick={() => quickFill(role)}
-                  style={{ flex: 1, padding: '7px 0', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.7rem', color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.color = 'var(--accent)' }}
-                  onMouseLeave={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = 'var(--text-secondary)' }}>
-                  {role}
-                </button>
-              ))}
-            </div>
-
-            {/* Faculty Quick Fill */}
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: 8 }}>Quick demo — Faculty</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: 8 }}>Quick Demo Login</div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {[
-                { key: 'faculty-1', label: 'Dr. Roopam' },
-                { key: 'faculty-2', label: 'A. Pandey' },
-                { key: 'faculty-3', label: 'A. Patney' },
-              ].map(({ key, label }) => (
-                <button key={key} onClick={() => quickFill(key)}
-                  style={{ flex: 1, padding: '7px 4px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.65rem', color: 'var(--text-secondary)', letterSpacing: '0.04em', transition: 'all 0.15s', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                  onMouseEnter={e => { e.target.style.borderColor = '#3b82f6'; e.target.style.color = '#3b82f6' }}
-                  onMouseLeave={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = 'var(--text-secondary)' }}>
-                  {label}
+              {['admin', 'tpo', 'student', 'faculty'].map(role => (
+                <button
+                  key={role}
+                  onClick={() => quickFill(role)}
+                  style={{
+                    flex: 1, padding: '8px 4px',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-display)', fontWeight: 700,
+                    fontSize: '0.7rem', color: 'var(--text-secondary)',
+                    letterSpacing: '0.05em', textTransform: 'capitalize',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = 'var(--accent)'
+                    e.currentTarget.style.color = 'var(--accent)'
+                    e.currentTarget.style.background = 'var(--accent-glow)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'var(--border)'
+                    e.currentTarget.style.color = 'var(--text-secondary)'
+                    e.currentTarget.style.background = 'var(--bg-elevated)'
+                  }}
+                >
+                  {role}
                 </button>
               ))}
             </div>
