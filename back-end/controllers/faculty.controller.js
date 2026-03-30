@@ -1,5 +1,4 @@
-// back-end/controllers/faculty.controller.js — COMPLETE FILE
-// Replaces the one from yesterday. Adds getAllFaculty + deleteFaculty.
+// back-end/controllers/faculty.controller.js
 
 const Faculty    = require('../models/faculty')
 const Student    = require('../models/Student')
@@ -11,9 +10,17 @@ const fs         = require('fs')
 
 const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)
 
+// ─── Helper: resolve facultyId from JWT payload ───────────────────────────────
+// req.user can be a full Faculty doc (when role=faculty) or a decoded JWT object.
+// Both should expose facultyId. The auth middleware sets req.user.facultyId for faculty.
+function getFacultyId(req) {
+  return req.user?.facultyId || req.user?.enrollmentNumber || null
+}
+
 // ─── GET /api/faculty/profile ──────────────────────────────────────────────────
 const getFacultyProfile = asyncHandler(async (req, res) => {
-  const faculty = await Faculty.findOne({ facultyId: req.user.enrollmentNumber })
+  const facultyId = getFacultyId(req)
+  const faculty = await Faculty.findOne({ facultyId })
   if (!faculty) return res.status(404).json({ success: false, message: 'Faculty profile not found' })
   res.json({ success: true, data: faculty })
 })
@@ -44,22 +51,24 @@ const getStudents = asyncHandler(async (req, res) => {
 
 // ─── GET /api/faculty/attendance ──────────────────────────────────────────────
 const getAttendance = asyncHandler(async (req, res) => {
-  const faculty = await Faculty.findOne({ facultyId: req.user.enrollmentNumber })
+  const facultyId = getFacultyId(req)
+  const faculty   = await Faculty.findOne({ facultyId })
   if (!faculty) return res.status(404).json({ success: false, message: 'Faculty not found' })
 
   const { date, enrollmentNumber } = req.query
   const query = { subject: faculty.subject }
-  if (date)             query.date             = new Date(date)
+  if (date)             query.date             = date            // keep as string YYYY-MM-DD
   if (enrollmentNumber) query.enrollmentNumber = enrollmentNumber
 
-  const records = await Attendance.find(query).sort({ date: -1 }).limit(500)
+  const records = await Attendance.find(query).sort({ date: -1 }).limit(2000)
   res.json({ success: true, count: records.length, data: records })
 })
 
 // ─── POST /api/faculty/attendance ─────────────────────────────────────────────
 const markAttendance = asyncHandler(async (req, res) => {
   const { records } = req.body
-  const faculty = await Faculty.findOne({ facultyId: req.user.enrollmentNumber })
+  const facultyId   = getFacultyId(req)
+  const faculty     = await Faculty.findOne({ facultyId })
   if (!faculty) return res.status(404).json({ success: false, message: 'Faculty not found' })
   if (!Array.isArray(records) || !records.length)
     return res.status(400).json({ success: false, message: 'records array is required' })
@@ -88,7 +97,8 @@ const markAttendance = asyncHandler(async (req, res) => {
 
 // ─── GET /api/faculty/marks ───────────────────────────────────────────────────
 const getMarks = asyncHandler(async (req, res) => {
-  const faculty = await Faculty.findOne({ facultyId: req.user.enrollmentNumber })
+  const facultyId = getFacultyId(req)
+  const faculty   = await Faculty.findOne({ facultyId })
   if (!faculty) return res.status(404).json({ success: false, message: 'Faculty not found' })
 
   const { enrollmentNumber } = req.query
@@ -103,7 +113,8 @@ const getMarks = asyncHandler(async (req, res) => {
 const uploadMarks = asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' })
 
-  const faculty = await Faculty.findOne({ facultyId: req.user.enrollmentNumber })
+  const facultyId = getFacultyId(req)
+  const faculty   = await Faculty.findOne({ facultyId })
   if (!faculty) return res.status(404).json({ success: false, message: 'Faculty not found' })
 
   const workbook = xlsx.readFile(req.file.path)
@@ -130,7 +141,12 @@ const uploadMarks = asyncHandler(async (req, res) => {
     try {
       await Marks.findOneAndUpdate(
         { enrollmentNumber: enroll, subject: faculty.subject },
-        { theoryMarks: row.TheoryMarks, practicalMarks: row.PracticalMarks, facultyId: faculty.facultyId, uploadedVia: 'excel' },
+        {
+          theoryMarks:    row.TheoryMarks,
+          practicalMarks: row.PracticalMarks,
+          facultyId:      faculty.facultyId,
+          uploadedVia:    'excel',
+        },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       )
       results.saved.push(enroll)
@@ -143,13 +159,17 @@ const uploadMarks = asyncHandler(async (req, res) => {
 })
 
 // ─── POST /api/faculty/manual-marks ──────────────────────────────────────────
+// FIX: was using req.user.facultyId which doesn't exist on the decoded JWT.
+// Now uses getFacultyId() helper to resolve from either decoded token or full object.
 const manualMarks = asyncHandler(async (req, res) => {
   const { enrollmentNumber, theoryMarks, practicalMarks } = req.body
   if (!enrollmentNumber)
     return res.status(400).json({ success: false, message: 'enrollmentNumber is required' })
 
-  const faculty = await Faculty.findOne({ facultyId: req.user.facultyId })
-  if (!faculty) return res.status(404).json({ success: false, message: 'Faculty not found' })
+  const facultyId = getFacultyId(req)
+  const faculty   = await Faculty.findOne({ facultyId })
+  if (!faculty)
+    return res.status(404).json({ success: false, message: 'Faculty not found' })
 
   const student = await Student.findOne({ enrollmentNumber })
   if (!student)
@@ -157,7 +177,12 @@ const manualMarks = asyncHandler(async (req, res) => {
 
   const marks = await Marks.findOneAndUpdate(
     { enrollmentNumber, subject: faculty.subject },
-    { theoryMarks, practicalMarks, facultyId: faculty.facultyId, uploadedVia: 'manual' },
+    {
+      theoryMarks,
+      practicalMarks,
+      facultyId:   faculty.facultyId,
+      uploadedVia: 'manual',
+    },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   )
 
@@ -172,7 +197,7 @@ const createFaculty = asyncHandler(async (req, res) => {
   if (exists)
     return res.status(400).json({ success: false, message: 'Faculty ID or Email already exists' })
 
-  const faculty = await Faculty.create({ facultyId, name, email, phone, subject, subjectCode })
+  const faculty = await Faculty.create({ facultyId, name, email, phone, subject, subjectCode, password: password || 'faculty123' })
 
   await User.create({
     name,
@@ -190,7 +215,6 @@ const deleteFaculty = asyncHandler(async (req, res) => {
   const faculty = await Faculty.findById(req.params.id)
   if (!faculty) return res.status(404).json({ success: false, message: 'Faculty not found' })
 
-  // Also remove the login user account
   await User.findOneAndDelete({ enrollmentNumber: faculty.facultyId })
   await faculty.deleteOne()
 

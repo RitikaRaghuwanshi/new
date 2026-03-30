@@ -7,11 +7,12 @@ import {
   Search, CheckCircle, XCircle,
   FileSpreadsheet, RefreshCw, BookOpen,
   Plus, X, Trash2, Save, BookMarked, GraduationCap,
-  Calendar, Calculator, AlertTriangle, TrendingUp, BarChart2
+  Calendar, Calculator, AlertTriangle, TrendingUp, BarChart2,
+  LayoutDashboard,
 } from 'lucide-react'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-const today = () => new Date().toISOString().slice(0, 10)
+const todayStr = () => new Date().toISOString().slice(0, 10)
 
 function cgpaColor(v) {
   if (v >= 8) return { bg: '#dcfce7', color: '#16a34a' }
@@ -26,9 +27,13 @@ function StatBox({ icon: Icon, label, value, color }) {
       flex: 1, minWidth: 130,
       background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14,
       padding: '18px 20px', borderTop: `4px solid ${color}`,
-      boxShadow: '0 1px 4px rgba(0,0,0,.06)'
+      boxShadow: '0 1px 4px rgba(0,0,0,.06)',
     }}>
-      <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: `${color}18`, display: 'flex', alignItems: 'center',
+        justifyContent: 'center', marginBottom: 10,
+      }}>
         <Icon size={18} color={color} />
       </div>
       <div style={{ fontSize: 26, fontWeight: 900, color: '#1e293b', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>{value}</div>
@@ -38,42 +43,36 @@ function StatBox({ icon: Icon, label, value, color }) {
 }
 
 // ─── AttendanceCalculatorTab ──────────────────────────────────────────────────
-function AttendanceCalculatorTab({ profile }) {
+function AttendanceCalculatorTab({ profile, students }) {
   const [startDate, setStartDate] = useState('')
   const [endDate,   setEndDate]   = useState('')
   const [loading,   setLoading]   = useState(false)
-  const [results,   setResults]   = useState(null) // { rows, totalClasses, dateList }
-  const [students,  setStudents]  = useState([])
-
-  // Load students once
-  useEffect(() => {
-    API.get('/faculty/students')
-      .then(r => setStudents(r.data.data || []))
-      .catch(() => {})
-  }, [])
+  const [results,   setResults]   = useState(null)
 
   const calculate = async () => {
     if (!startDate || !endDate) return toast.error('Please pick both start and end dates')
     if (startDate > endDate)    return toast.error('Start date must be before end date')
+    if (!students.length)       return toast.error('No students loaded yet')
     setLoading(true)
     try {
-      // Fetch ALL attendance records for this subject (no date filter — we filter client-side)
       const { data } = await API.get('/faculty/attendance')
       const allRecords = data.data || []
 
-      // Build list of unique dates between startDate and endDate that have at least 1 record
+      // Filter records in date range
       const inRange = allRecords.filter(r => r.date >= startDate && r.date <= endDate)
+
+      // Find unique dates that actually had class (at least one record)
       const uniqueDates = [...new Set(inRange.map(r => r.date))].sort()
       const totalClasses = uniqueDates.length
 
       if (totalClasses === 0) {
         toast.error('No attendance records found in that date range')
-        setLoading(false)
         setResults(null)
+        setLoading(false)
         return
       }
 
-      // Build per-student summary
+      // Build per-student totals
       const byStudent = {}
       students.forEach(s => {
         byStudent[s.enrollmentNumber] = { name: s.name, present: 0, absent: 0 }
@@ -84,13 +83,13 @@ function AttendanceCalculatorTab({ profile }) {
           byStudent[r.enrollmentNumber] = { name: r.enrollmentNumber, present: 0, absent: 0 }
         }
         if (r.status === 'Present') byStudent[r.enrollmentNumber].present++
-        else                        byStudent[r.enrollmentNumber].absent++
+        else byStudent[r.enrollmentNumber].absent++
       })
 
       const rows = Object.entries(byStudent)
         .map(([enroll, d]) => {
           const attended = d.present
-          const pct      = totalClasses > 0 ? parseFloat(((attended / totalClasses) * 100).toFixed(1)) : 0
+          const pct = parseFloat(((attended / totalClasses) * 100).toFixed(1))
           return { enroll, name: d.name, attended, totalClasses, pct, safe: pct >= 75 }
         })
         .sort((a, b) => b.pct - a.pct)
@@ -103,58 +102,45 @@ function AttendanceCalculatorTab({ profile }) {
     }
   }
 
-  const safeCount    = results?.rows.filter(r => r.safe).length  || 0
-  const dangerCount  = results?.rows.filter(r => !r.safe).length || 0
+  const safeCount   = results?.rows.filter(r => r.safe).length  || 0
+  const dangerCount = results?.rows.filter(r => !r.safe).length || 0
 
   return (
     <div>
-      {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1rem', marginBottom: 4 }}>
           Attendance Calculator
         </h3>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-          Select a date range. All dates in that range that have at least one attendance entry will be counted as classes held. Then the attendance % of each student is calculated.
+          Pick a date range. Every date that has at least one attendance record counts as a class held.
+          The attendance % of each student is then calculated against total classes held.
         </p>
       </div>
 
-      {/* Date Range Picker */}
+      {/* Date range picker */}
       <div className="card" style={{ marginBottom: 20, padding: '18px 20px' }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div className="form-group" style={{ flex: 1, minWidth: 160 }}>
             <label className="form-label">Start Date</label>
             <div style={{ position: 'relative' }}>
               <Calendar size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input
-                type="date" className="form-input"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                style={{ paddingLeft: 32 }}
-              />
+              <input type="date" className="form-input" value={startDate}
+                onChange={e => setStartDate(e.target.value)} style={{ paddingLeft: 32 }} />
             </div>
           </div>
           <div className="form-group" style={{ flex: 1, minWidth: 160 }}>
             <label className="form-label">End Date</label>
             <div style={{ position: 'relative' }}>
               <Calendar size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input
-                type="date" className="form-input"
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                style={{ paddingLeft: 32 }}
-              />
+              <input type="date" className="form-input" value={endDate}
+                onChange={e => setEndDate(e.target.value)} style={{ paddingLeft: 32 }} />
             </div>
           </div>
-          <button
-            className="btn btn-primary"
-            onClick={calculate}
-            disabled={loading}
-            style={{ marginBottom: 1, minWidth: 160, justifyContent: 'center' }}
-          >
+          <button className="btn btn-primary" onClick={calculate} disabled={loading}
+            style={{ marginBottom: 1, minWidth: 180, justifyContent: 'center' }}>
             {loading
               ? <><div className="spinner" style={{ width: 14, height: 14 }} /> Calculating…</>
-              : <><Calculator size={14} /> Calculate Attendance</>
-            }
+              : <><Calculator size={14} /> Calculate Attendance</>}
           </button>
         </div>
       </div>
@@ -162,41 +148,42 @@ function AttendanceCalculatorTab({ profile }) {
       {/* Results */}
       {results && (
         <>
-          {/* Summary Cards */}
+          {/* Summary cards */}
           <div style={{ display: 'flex', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 140, padding: '16px 20px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, borderTop: '4px solid #7c3aed', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#7c3aed', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>{results.totalClasses}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Classes Held</div>
-              <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>{startDate} → {endDate}</div>
-            </div>
-            <div style={{ flex: 1, minWidth: 140, padding: '16px 20px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, borderTop: '4px solid #059669', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#059669', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>{safeCount}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>≥ 75% (Safe)</div>
-            </div>
-            <div style={{ flex: 1, minWidth: 140, padding: '16px 20px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, borderTop: '4px solid #dc2626', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#dc2626', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>{dangerCount}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{'< 75% (Shortage)'}</div>
-            </div>
-            <div style={{ flex: 1, minWidth: 140, padding: '16px 20px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, borderTop: '4px solid #2563eb', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#2563eb', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>{results.rows.length}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Students</div>
-            </div>
+            {[
+              { label: 'Classes Held', value: results.totalClasses, color: '#7c3aed', sub: `${startDate} → ${endDate}` },
+              { label: '≥ 75% (Safe)',    value: safeCount,         color: '#059669' },
+              { label: '< 75% (Short)',   value: dangerCount,       color: '#dc2626' },
+              { label: 'Total Students',  value: results.rows.length, color: '#2563eb' },
+            ].map(item => (
+              <div key={item.label} style={{
+                flex: 1, minWidth: 140, padding: '16px 20px',
+                background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14,
+                borderTop: `4px solid ${item.color}`, boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+              }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: item.color, fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>{item.value}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{item.label}</div>
+                {item.sub && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>{item.sub}</div>}
+              </div>
+            ))}
           </div>
 
-          {/* Dates held info */}
+          {/* Dates held */}
           <div style={{ marginBottom: 16, padding: '10px 16px', background: 'var(--bg-elevated)', borderRadius: 10, border: '1px solid var(--border)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Classes held on: </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Classes held on:{' '}
+            </span>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
               {results.dateList.join('  •  ')}
             </span>
           </div>
 
-          {/* Table */}
+          {/* Results table */}
           <div className="card" style={{ padding: 0 }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <BarChart2 size={15} color="var(--accent)" />
               <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>
-                Student Attendance — {profile?.subject} ({startDate} to {endDate})
+                Student Attendance — {profile?.subject}
               </span>
             </div>
             <div className="table-wrap">
@@ -207,11 +194,11 @@ function AttendanceCalculatorTab({ profile }) {
                     <th>Enrollment</th>
                     <th>Name</th>
                     <th>Attended</th>
-                    <th>Total Classes</th>
+                    <th>Total</th>
                     <th>Attendance %</th>
                     <th>Progress</th>
                     <th>Status</th>
-                    <th>Classes Needed (for 75%)</th>
+                    <th>Classes Needed (75%)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -220,7 +207,7 @@ function AttendanceCalculatorTab({ profile }) {
                       ? 0
                       : Math.ceil((0.75 * row.totalClasses - row.attended) / 0.25)
                     const pctColor = row.pct >= 75 ? '#059669' : row.pct >= 60 ? '#d97706' : '#dc2626'
-                    const pctBg    = row.pct >= 75 ? '#dcfce7' : row.pct >= 60 ? '#fef3c7' : '#fee2e2'
+                    const pctBg   = row.pct >= 75 ? '#dcfce7' : row.pct >= 60 ? '#fef3c7' : '#fee2e2'
                     return (
                       <tr key={row.enroll}>
                         <td style={{ color: 'var(--text-muted)', fontWeight: 700 }}>{i + 1}</td>
@@ -237,13 +224,19 @@ function AttendanceCalculatorTab({ profile }) {
                             {row.pct}%
                           </span>
                         </td>
-                        <td style={{ minWidth: 120 }}>
-                          <div style={{ height: 8, background: 'var(--bg-elevated)', borderRadius: 99, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${Math.min(row.pct, 100)}%`, background: `linear-gradient(90deg, ${pctColor}88, ${pctColor})`, borderRadius: 99, transition: 'width 0.6s ease' }} />
+                        <td style={{ minWidth: 130 }}>
+                          <div style={{ height: 8, background: 'var(--bg-elevated)', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${Math.min(row.pct, 100)}%`,
+                              background: `linear-gradient(90deg, ${pctColor}88, ${pctColor})`,
+                              borderRadius: 99,
+                              transition: 'width 0.6s ease',
+                            }} />
                           </div>
                           {/* 75% marker */}
                           <div style={{ position: 'relative', height: 0 }}>
-                            <div style={{ position: 'absolute', left: '75%', top: -10, width: 1, height: 10, background: '#94a3b8', opacity: 0.5 }} />
+                            <div style={{ position: 'absolute', left: '75%', top: -10, width: 1, height: 10, background: '#94a3b8', opacity: 0.6 }} />
                           </div>
                         </td>
                         <td>
@@ -266,7 +259,7 @@ function AttendanceCalculatorTab({ profile }) {
             </div>
           </div>
 
-          {/* Shortage list highlight */}
+          {/* Shortage list */}
           {dangerCount > 0 && (
             <div style={{ marginTop: 16, padding: '14px 18px', background: '#fff1f2', border: '1.5px solid #fecdd3', borderRadius: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -299,21 +292,18 @@ function AttendanceCalculatorTab({ profile }) {
   )
 }
 
-// ─── SyllabusTab (unchanged from original, kept intact) ───────────────────────
+// ─── SyllabusTab ─────────────────────────────────────────────────────────────
 function SyllabusTab({ profile }) {
-  const [syllabus,   setSyllabus]   = useState(null)
-  const [loading,    setLoading]    = useState(true)
-  const [saving,     setSaving]     = useState(false)
-  const [activeView, setActiveView] = useState('units')
-
+  const [syllabus,    setSyllabus]    = useState(null)
+  const [loading,     setLoading]     = useState(true)
+  const [saving,      setSaving]      = useState(false)
+  const [activeView,  setActiveView]  = useState('units')
   const [unitForm,    setUnitForm]    = useState({ unitNumber: '', title: '', topics: '' })
   const [addingUnit,  setAddingUnit]  = useState(false)
   const [showUnitForm,setShowUnitForm]= useState(false)
   const [editingUnit, setEditingUnit] = useState(null)
-
-  const [mstForm,    setMstForm]    = useState({ mstNumber: 1, syllabus: '', units: '', scheduledDate: '' })
-  const [savingMst,  setSavingMst]  = useState(false)
-
+  const [mstForm,     setMstForm]     = useState({ mstNumber: 1, syllabus: '', units: '', scheduledDate: '' })
+  const [savingMst,   setSavingMst]   = useState(false)
   const [refBooks,     setRefBooks]     = useState('')
   const [endSemTopics, setEndSemTopics] = useState('')
   const [academicYear, setAcademicYear] = useState('2024-25')
@@ -342,8 +332,8 @@ function SyllabusTab({ profile }) {
     try {
       const { data } = await API.patch('/faculty/syllabus/unit', {
         unitNumber: parseInt(unitForm.unitNumber),
-        title:      unitForm.title,
-        topics:     unitForm.topics.split('\n').map(t => t.trim()).filter(Boolean),
+        title: unitForm.title,
+        topics: unitForm.topics.split('\n').map(t => t.trim()).filter(Boolean),
       })
       setSyllabus(data.data)
       setUnitForm({ unitNumber: '', title: '', topics: '' })
@@ -377,9 +367,9 @@ function SyllabusTab({ profile }) {
     setSavingMst(true)
     try {
       const { data } = await API.patch('/faculty/syllabus/mst', {
-        mstNumber:     mstForm.mstNumber,
-        syllabus:      mstForm.syllabus,
-        units:         mstForm.units.split(',').map(u => u.trim()).filter(Boolean),
+        mstNumber: mstForm.mstNumber,
+        syllabus: mstForm.syllabus,
+        units: mstForm.units.split(',').map(u => u.trim()).filter(Boolean),
         scheduledDate: mstForm.scheduledDate,
       })
       setSyllabus(data.data)
@@ -392,8 +382,8 @@ function SyllabusTab({ profile }) {
     setSaving(true)
     try {
       const { data } = await API.post('/faculty/syllabus', {
-        units:          syllabus?.units || [],
-        mstSyllabus:    syllabus?.mstSyllabus || [],
+        units: syllabus?.units || [],
+        mstSyllabus: syllabus?.mstSyllabus || [],
         referenceBooks: refBooks.split('\n').map(b => b.trim()).filter(Boolean),
         endSemTopics,
         academicYear,
@@ -418,13 +408,10 @@ function SyllabusTab({ profile }) {
 
   return (
     <div>
-      {/* Subject header */}
       <div style={{ padding: '14px 18px', background: 'var(--accent-glow)', border: '1px solid rgba(124,58,237,0.15)', borderRadius: 12, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
         <BookOpen size={18} color="var(--accent)" />
         <div>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text-primary)' }}>
-            {profile?.subject}
-          </span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text-primary)' }}>{profile?.subject}</span>
           {profile?.subjectCode && (
             <span style={{ marginLeft: 8, fontSize: '0.8rem', fontFamily: 'monospace', color: '#7dd3fc', background: '#1e293b', padding: '1px 6px', borderRadius: 5 }}>
               {profile.subjectCode}
@@ -433,18 +420,11 @@ function SyllabusTab({ profile }) {
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Academic Year:</span>
-          <input
-            className="form-input"
-            style={{ width: 100, padding: '4px 8px', fontSize: '0.8rem' }}
-            value={academicYear}
-            onChange={e => setAcademicYear(e.target.value)}
-            onBlur={saveExtras}
-            placeholder="2024-25"
-          />
+          <input className="form-input" style={{ width: 100, padding: '4px 8px', fontSize: '0.8rem' }}
+            value={academicYear} onChange={e => setAcademicYear(e.target.value)} onBlur={saveExtras} placeholder="2024-25" />
         </div>
       </div>
 
-      {/* Sub-tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, background: '#fff', padding: 5, borderRadius: 14, border: '1px solid var(--border)', width: 'fit-content', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
         {subTabs.map(t => {
           const active = activeView === t.id
@@ -455,8 +435,8 @@ function SyllabusTab({ profile }) {
               fontSize: 13, fontWeight: 700, fontFamily: 'Outfit, sans-serif',
               transition: 'all 0.15s',
               background: active ? 'var(--accent)' : 'transparent',
-              color:      active ? '#fff' : 'var(--text-muted)',
-              boxShadow:  active ? '0 4px 12px rgba(124,58,237,0.3)' : 'none',
+              color: active ? '#fff' : 'var(--text-muted)',
+              boxShadow: active ? '0 4px 12px rgba(124,58,237,0.3)' : 'none',
             }}>
               <t.icon size={13} />{t.label}
             </button>
@@ -464,15 +444,11 @@ function SyllabusTab({ profile }) {
         })}
       </div>
 
-      {/* ══ UNITS VIEW ══ */}
       {activeView === 'units' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.95rem' }}>
-              Unit-wise Syllabus
-              <span style={{ marginLeft: 8, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                ({syllabus?.units?.length || 0} units)
-              </span>
+              Unit-wise Syllabus <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>({syllabus?.units?.length || 0} units)</span>
             </h3>
             <button className="btn btn-primary" style={{ padding: '7px 14px', fontSize: '0.8rem' }}
               onClick={() => { setUnitForm({ unitNumber: '', title: '', topics: '' }); setEditingUnit(null); setShowUnitForm(true) }}>
@@ -495,22 +471,19 @@ function SyllabusTab({ profile }) {
                   <div className="form-group">
                     <label className="form-label">Unit No. *</label>
                     <input required type="number" min="1" max="10" className="form-input" placeholder="e.g. 1"
-                      value={unitForm.unitNumber}
-                      onChange={e => setUnitForm({ ...unitForm, unitNumber: e.target.value })} />
+                      value={unitForm.unitNumber} onChange={e => setUnitForm({ ...unitForm, unitNumber: e.target.value })} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Unit Title *</label>
-                    <input required className="form-input" placeholder="e.g. Introduction to Computer Networks"
-                      value={unitForm.title}
-                      onChange={e => setUnitForm({ ...unitForm, title: e.target.value })} />
+                    <input required className="form-input" placeholder="e.g. Introduction to Networks"
+                      value={unitForm.title} onChange={e => setUnitForm({ ...unitForm, title: e.target.value })} />
                   </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Topics (one per line)</label>
                   <textarea className="form-input" rows={4}
-                    placeholder={"OSI Model\nTCP/IP Protocol Suite\nNetwork Topologies"}
-                    value={unitForm.topics}
-                    onChange={e => setUnitForm({ ...unitForm, topics: e.target.value })}
+                    placeholder={"OSI Model\nTCP/IP Suite\nNetwork Topologies"}
+                    value={unitForm.topics} onChange={e => setUnitForm({ ...unitForm, topics: e.target.value })}
                     style={{ resize: 'vertical' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -528,7 +501,6 @@ function SyllabusTab({ profile }) {
             <div className="card" style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
               <BookOpen size={36} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
               <p style={{ fontWeight: 600 }}>No units added yet</p>
-              <p style={{ fontSize: '0.8rem', marginTop: 4 }}>Click "Add Unit" to start building the syllabus</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -551,12 +523,10 @@ function SyllabusTab({ profile }) {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                        onClick={() => startEditUnit(unit)}>
+                      <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.75rem' }} onClick={() => startEditUnit(unit)}>
                         <PenLine size={12} /> Edit
                       </button>
-                      <button className="btn btn-danger" style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                        onClick={() => deleteUnit(unit.unitNumber)}>
+                      <button className="btn btn-danger" style={{ padding: '4px 10px', fontSize: '0.75rem' }} onClick={() => deleteUnit(unit.unitNumber)}>
                         <Trash2 size={12} />
                       </button>
                     </div>
@@ -575,85 +545,36 @@ function SyllabusTab({ profile }) {
         </div>
       )}
 
-      {/* ══ MST VIEW ══ */}
       {activeView === 'mst' && (
         <div>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.95rem', marginBottom: 16 }}>
-            MST (Mid-Semester Test) Syllabus
-          </h3>
-
+          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.95rem', marginBottom: 16 }}>MST Syllabus</h3>
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
             {[1, 2].map(n => (
               <button key={n}
                 onClick={() => {
                   const existing = syllabus?.mstSyllabus?.find(m => m.mstNumber === n)
-                  setMstForm({
-                    mstNumber:     n,
-                    syllabus:      existing?.syllabus || '',
-                    units:         (existing?.units || []).join(', '),
-                    scheduledDate: existing?.scheduledDate || '',
-                  })
+                  setMstForm({ mstNumber: n, syllabus: existing?.syllabus || '', units: (existing?.units || []).join(', '), scheduledDate: existing?.scheduledDate || '' })
                 }}
-                style={{
-                  padding: '10px 24px', borderRadius: 12, cursor: 'pointer',
-                  fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: '0.9rem',
-                  border: 'none',
-                  background: mstForm.mstNumber === n ? 'var(--accent)' : 'var(--bg-elevated)',
-                  color:      mstForm.mstNumber === n ? '#fff' : 'var(--text-secondary)',
-                  boxShadow:  mstForm.mstNumber === n ? '0 4px 12px rgba(124,58,237,0.3)' : 'none',
-                  transition: 'all 0.15s',
-                }}>
+                style={{ padding: '10px 24px', borderRadius: 12, cursor: 'pointer', fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: '0.9rem', border: 'none', transition: 'all 0.15s', background: mstForm.mstNumber === n ? 'var(--accent)' : 'var(--bg-elevated)', color: mstForm.mstNumber === n ? '#fff' : 'var(--text-secondary)', boxShadow: mstForm.mstNumber === n ? '0 4px 12px rgba(124,58,237,0.3)' : 'none' }}>
                 MST-{n}
               </button>
             ))}
           </div>
-
-          {syllabus?.mstSyllabus?.map(m => (
-            <div key={m.mstNumber} style={{
-              padding: '12px 16px', borderRadius: 12, marginBottom: 10,
-              background: m.mstNumber === 1 ? '#eff6ff' : '#fdf4ff',
-              border: `1.5px solid ${m.mstNumber === 1 ? '#bfdbfe' : '#e9d5ff'}`,
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 700, color: m.mstNumber === 1 ? '#1d4ed8' : '#7c3aed', fontSize: '0.9rem' }}>
-                  MST-{m.mstNumber} {m.scheduledDate && `— 📅 ${m.scheduledDate}`}
-                </span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Units: {(m.units || []).join(', ') || 'Not specified'}
-                </span>
-              </div>
-              {m.syllabus && (
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.5 }}>{m.syllabus}</p>
-              )}
-            </div>
-          ))}
-
-          <div className="card" style={{ borderColor: mstForm.mstNumber === 1 ? '#bfdbfe' : '#e9d5ff', background: mstForm.mstNumber === 1 ? '#f8fbff' : '#fdf7ff' }}>
-            <h4 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: 14, color: mstForm.mstNumber === 1 ? '#1d4ed8' : '#7c3aed' }}>
-              {syllabus?.mstSyllabus?.find(m => m.mstNumber === mstForm.mstNumber) ? 'Update' : 'Add'} MST-{mstForm.mstNumber} Details
-            </h4>
+          <div className="card">
             <form onSubmit={saveMst} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="form-group">
                   <label className="form-label">Scheduled Date</label>
-                  <input type="date" className="form-input"
-                    value={mstForm.scheduledDate}
-                    onChange={e => setMstForm({ ...mstForm, scheduledDate: e.target.value })} />
+                  <input type="date" className="form-input" value={mstForm.scheduledDate} onChange={e => setMstForm({ ...mstForm, scheduledDate: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Units Covered (e.g. 1, 2, 3)</label>
-                  <input className="form-input" placeholder="1, 2, 3"
-                    value={mstForm.units}
-                    onChange={e => setMstForm({ ...mstForm, units: e.target.value })} />
+                  <input className="form-input" placeholder="1, 2, 3" value={mstForm.units} onChange={e => setMstForm({ ...mstForm, units: e.target.value })} />
                 </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Syllabus / Topics for MST-{mstForm.mstNumber}</label>
-                <textarea className="form-input" rows={5}
-                  placeholder={`Describe the topics covered in MST-${mstForm.mstNumber}.`}
-                  value={mstForm.syllabus}
-                  onChange={e => setMstForm({ ...mstForm, syllabus: e.target.value })}
-                  style={{ resize: 'vertical' }} />
+                <textarea className="form-input" rows={5} value={mstForm.syllabus} onChange={e => setMstForm({ ...mstForm, syllabus: e.target.value })} style={{ resize: 'vertical' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button type="submit" className="btn btn-primary" disabled={savingMst} style={{ fontSize: '0.85rem' }}>
@@ -665,42 +586,16 @@ function SyllabusTab({ profile }) {
         </div>
       )}
 
-      {/* ══ SUMMARY VIEW ══ */}
       {activeView === 'summary' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="card" style={{ padding: '16px 20px', background: 'var(--bg-elevated)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14 }}>
-            {[
-              { label: 'Subject',       value: profile?.subject || '—'            },
-              { label: 'Subject Code',  value: profile?.subjectCode || '—'        },
-              { label: 'Units Added',   value: syllabus?.units?.length || 0        },
-              { label: 'MST Entries',   value: syllabus?.mstSyllabus?.length || 0 },
-              { label: 'Academic Year', value: academicYear                        },
-            ].map(({ label, value }) => (
-              <div key={label}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{value}</div>
-              </div>
-            ))}
-          </div>
-
           <div className="card">
             <h4 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: 12 }}>Reference Books</h4>
-            <textarea className="form-input" rows={4}
-              placeholder={"One book per line:\nData Communications and Networking — Forouzan\nComputer Networks — Tanenbaum"}
-              value={refBooks}
-              onChange={e => setRefBooks(e.target.value)}
-              style={{ resize: 'vertical' }} />
+            <textarea className="form-input" rows={4} placeholder={"One book per line"} value={refBooks} onChange={e => setRefBooks(e.target.value)} style={{ resize: 'vertical' }} />
           </div>
-
           <div className="card">
-            <h4 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: 12 }}>End-Semester Additional Notes</h4>
-            <textarea className="form-input" rows={4}
-              placeholder="Topics or chapters added for end-semester exam beyond regular units…"
-              value={endSemTopics}
-              onChange={e => setEndSemTopics(e.target.value)}
-              style={{ resize: 'vertical' }} />
+            <h4 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: 12 }}>End-Semester Notes</h4>
+            <textarea className="form-input" rows={4} value={endSemTopics} onChange={e => setEndSemTopics(e.target.value)} style={{ resize: 'vertical' }} />
           </div>
-
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button className="btn btn-primary" onClick={saveExtras} disabled={saving} style={{ fontSize: '0.875rem' }}>
               {saving ? <><div className="spinner" style={{ width: 14, height: 14 }} /> Saving…</> : <><Save size={14} /> Save Summary</>}
@@ -715,20 +610,22 @@ function SyllabusTab({ profile }) {
 // ─── Main FacultyDashboard ────────────────────────────────────────────────────
 export default function FacultyDashboard() {
   const { user } = useAuth()
+  const [profile,        setProfile]        = useState(null)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [students,       setStudents]       = useState([])
+  const [studentsLoading,setStudentsLoading]= useState(false)
+  const [searchEnroll,   setSearchEnroll]   = useState('')
+  const [searchName,     setSearchName]     = useState('')
+  const [tab,            setTab]            = useState('overview')
 
-  const [profile,         setProfile]         = useState(null)
-  const [profileLoading,  setProfileLoading]  = useState(true)
-  const [students,        setStudents]        = useState([])
-  const [studentsLoading, setStudentsLoading] = useState(false)
-  const [searchEnroll,    setSearchEnroll]    = useState('')
-  const [searchName,      setSearchName]      = useState('')
-  const [tab,             setTab]             = useState('overview')
+  // Attendance state
+  const [attDate,       setAttDate]       = useState(todayStr())
+  const [attendance,    setAttendance]    = useState({})    // { enrollmentNumber: 'Present'|'Absent' }
+  const [submittingAtt, setSubmittingAtt] = useState(false)
+  const [attLoading,    setAttLoading]    = useState(false)
+  const [savedDates,    setSavedDates]    = useState([])    // dates that have existing records
 
-  const [attDate,        setAttDate]        = useState(today())
-  const [attendance,     setAttendance]     = useState({})
-  const [submittingAtt,  setSubmittingAtt]  = useState(false)
-  const [attLoading,     setAttLoading]     = useState(false)
-
+  // Marks state
   const [marksForm,      setMarksForm]      = useState({ enrollmentNumber: '', theoryMarks: '', practicalMarks: '' })
   const [savingMarks,    setSavingMarks]    = useState(false)
   const [excelFile,      setExcelFile]      = useState(null)
@@ -738,6 +635,7 @@ export default function FacultyDashboard() {
   const [marksLoading,   setMarksLoading]   = useState(false)
   const fileRef = useRef()
 
+  // Load faculty profile
   useEffect(() => {
     API.get('/faculty/profile')
       .then(r => setProfile(r.data.data))
@@ -745,6 +643,7 @@ export default function FacultyDashboard() {
       .finally(() => setProfileLoading(false))
   }, [])
 
+  // Load students
   const fetchStudents = (enroll = '', name = '') => {
     setStudentsLoading(true)
     const params = {}
@@ -754,6 +653,7 @@ export default function FacultyDashboard() {
       .then(r => {
         const list = r.data.data || []
         setStudents(list)
+        // Default everyone to Present
         const map = {}
         list.forEach(s => { map[s.enrollmentNumber] = 'Present' })
         setAttendance(map)
@@ -763,23 +663,35 @@ export default function FacultyDashboard() {
   }
   useEffect(() => { fetchStudents() }, [])
 
-  const fetchAttendance = (date) => {
+  // Fetch attendance for selected date (to pre-fill toggles)
+  const fetchAttendanceForDate = async (date) => {
     setAttLoading(true)
-    API.get('/faculty/attendance', { params: { date } })
-      .then(r => {
-        const records = r.data.data || []
+    try {
+      const { data } = await API.get('/faculty/attendance', { params: { date } })
+      const records = data.data || []
+      if (records.length > 0) {
+        // Pre-fill from saved records
         const map = {}
-        students.forEach(s => { map[s.enrollmentNumber] = 'Present' })
+        students.forEach(s => { map[s.enrollmentNumber] = 'Present' }) // default
         records.forEach(rec => { map[rec.enrollmentNumber] = rec.status })
         setAttendance(map)
-      })
-      .catch(() => {})
-      .finally(() => setAttLoading(false))
+      } else {
+        // No records for this date — reset all to Present
+        const map = {}
+        students.forEach(s => { map[s.enrollmentNumber] = 'Present' })
+        setAttendance(map)
+      }
+    } catch { /* silent */ }
+    finally { setAttLoading(false) }
   }
+
   useEffect(() => {
-    if (tab === 'attendance' && students.length > 0) fetchAttendance(attDate)
+    if (tab === 'attendance' && students.length > 0) {
+      fetchAttendanceForDate(attDate)
+    }
   }, [tab, attDate, students.length])
 
+  // Load marks list when marks tab opened
   const fetchMarks = () => {
     setMarksLoading(true)
     API.get('/faculty/marks')
@@ -789,6 +701,7 @@ export default function FacultyDashboard() {
   }
   useEffect(() => { if (tab === 'marks') fetchMarks() }, [tab])
 
+  // Submit attendance
   const submitAttendance = async () => {
     if (!students.length) return toast.error('No students loaded')
     setSubmittingAtt(true)
@@ -796,11 +709,10 @@ export default function FacultyDashboard() {
       const records = students.map(s => ({
         enrollmentNumber: s.enrollmentNumber,
         date:   attDate,
-        status: attendance[s.enrollmentNumber] || 'Present'
+        status: attendance[s.enrollmentNumber] || 'Present',
       }))
       await API.post('/faculty/attendance', { records })
-      toast.success(`Attendance saved for ${records.length} students!`)
-      fetchAttendance(attDate)
+      toast.success(`✅ Attendance saved for ${records.length} students on ${attDate}!`)
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to save attendance')
     } finally {
@@ -808,6 +720,7 @@ export default function FacultyDashboard() {
     }
   }
 
+  // Submit manual marks
   const submitManualMarks = async (e) => {
     e.preventDefault()
     if (!marksForm.enrollmentNumber) return toast.error('Enrollment number required')
@@ -815,8 +728,8 @@ export default function FacultyDashboard() {
     try {
       await API.post('/faculty/manual-marks', {
         enrollmentNumber: marksForm.enrollmentNumber.toUpperCase(),
-        theoryMarks:      parseFloat(marksForm.theoryMarks)    || 0,
-        practicalMarks:   parseFloat(marksForm.practicalMarks) || 0,
+        theoryMarks:    parseFloat(marksForm.theoryMarks)    || 0,
+        practicalMarks: parseFloat(marksForm.practicalMarks) || 0,
       })
       toast.success('Marks saved!')
       setMarksForm({ enrollmentNumber: '', theoryMarks: '', practicalMarks: '' })
@@ -828,6 +741,7 @@ export default function FacultyDashboard() {
     }
   }
 
+  // Upload excel marks
   const uploadExcel = async () => {
     if (!excelFile) return toast.error('Select a file first')
     setUploadingExcel(true); setUploadResult(null)
@@ -849,6 +763,7 @@ export default function FacultyDashboard() {
       <div className="spinner" /><span style={{ color: 'var(--text-muted)' }}>Loading…</span>
     </div>
   )
+
   if (!profile) return (
     <div className="card" style={{ textAlign: 'center', padding: 64, color: 'var(--text-muted)' }}>
       Faculty profile not found. Contact the administrator.
@@ -859,21 +774,21 @@ export default function FacultyDashboard() {
   const absent  = students.length - present
 
   const tabs = [
-    { id: 'overview',   label: 'Overview',       icon: BookOpen      },
-    { id: 'attendance', label: 'Mark Attendance', icon: ClipboardList },
-    { id: 'att_calc',   label: 'Att. Calculator', icon: Calculator    },
-    { id: 'marks',      label: 'Marks',           icon: PenLine       },
-    { id: 'syllabus',   label: 'Syllabus',        icon: BookMarked    },
+    { id: 'overview',   label: 'Overview',        icon: LayoutDashboard },
+    { id: 'attendance', label: 'Mark Attendance',  icon: ClipboardList   },
+    { id: 'att_calc',   label: 'Att. Calculator',  icon: Calculator      },
+    { id: 'marks',      label: 'Marks',            icon: PenLine         },
+    { id: 'syllabus',   label: 'Syllabus',         icon: BookMarked      },
   ]
 
   return (
     <div className="page-enter" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
 
-      {/* ── Header Banner ─────────────────────────────────────────────── */}
+      {/* ── Hero Banner ── */}
       <div style={{
         background: 'linear-gradient(135deg, #7c3aed 0%, #9d5cf5 100%)',
         borderRadius: 20, padding: '24px 28px', marginBottom: 24,
-        boxShadow: '0 8px 32px rgba(124,58,237,0.25)', position: 'relative', overflow: 'hidden'
+        boxShadow: '0 8px 32px rgba(124,58,237,0.25)', position: 'relative', overflow: 'hidden',
       }}>
         <div style={{ position: 'absolute', top: -50, right: -50, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
@@ -906,7 +821,7 @@ export default function FacultyDashboard() {
         <StatBox icon={Users}       label="Total Students" value={students.length} color="#7c3aed" />
         <StatBox icon={CheckCircle} label="Present Today"  value={present}         color="#059669" />
         <StatBox icon={XCircle}     label="Absent Today"   value={absent}          color="#dc2626" />
-        <StatBox icon={PenLine}     label="Marks Entered"  value={marksList.length}color="#2563eb" />
+        <StatBox icon={PenLine}     label="Marks Entered"  value={marksList.length} color="#2563eb" />
       </div>
 
       {/* ── Tabs ── */}
@@ -920,8 +835,8 @@ export default function FacultyDashboard() {
               fontSize: 13, fontWeight: 700, fontFamily: 'Outfit, sans-serif',
               transition: 'all 0.18s',
               background: active ? '#7c3aed' : 'transparent',
-              color:      active ? '#fff' : '#64748b',
-              boxShadow:  active ? '0 4px 14px rgba(124,58,237,0.35)' : 'none',
+              color: active ? '#fff' : '#64748b',
+              boxShadow: active ? '0 4px 14px rgba(124,58,237,0.35)' : 'none',
             }}>
               <t.icon size={14} />{t.label}
             </button>
@@ -1010,28 +925,47 @@ export default function FacultyDashboard() {
       {/* ══ ATTENDANCE TAB ══ */}
       {tab === 'attendance' && (
         <div>
+          {/* Controls */}
           <div className="card" style={{ marginBottom: 16, padding: '14px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Date</label>
-                <input type="date" className="form-input" value={attDate} onChange={e => setAttDate(e.target.value)} style={{ width: 170 }} />
+                <input type="date" className="form-input" value={attDate}
+                  onChange={e => setAttDate(e.target.value)} style={{ width: 170 }} />
               </div>
               <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, background: '#dcfce7', color: '#16a34a' }}>✓ Present: {present}</span>
-                <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, background: '#fee2e2', color: '#dc2626' }}>✗ Absent: {absent}</span>
-                <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={() => { const a = {}; students.forEach(s => { a[s.enrollmentNumber] = 'Present' }); setAttendance(a) }}>All Present</button>
-                <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={() => { const a = {}; students.forEach(s => { a[s.enrollmentNumber] = 'Absent' }); setAttendance(a) }}>All Absent</button>
+                <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, background: '#dcfce7', color: '#16a34a' }}>
+                  ✓ Present: {present}
+                </span>
+                <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, background: '#fee2e2', color: '#dc2626' }}>
+                  ✗ Absent: {absent}
+                </span>
+                <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }}
+                  onClick={() => { const a = {}; students.forEach(s => { a[s.enrollmentNumber] = 'Present' }); setAttendance(a) }}>
+                  All Present
+                </button>
+                <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }}
+                  onClick={() => { const a = {}; students.forEach(s => { a[s.enrollmentNumber] = 'Absent' }); setAttendance(a) }}>
+                  All Absent
+                </button>
                 <button className="btn btn-primary" onClick={submitAttendance} disabled={submittingAtt}>
-                  {submittingAtt ? <><div className="spinner" style={{ width: 14, height: 14 }} /> Saving…</> : <><CheckCircle size={14} /> Save Attendance</>}
+                  {submittingAtt
+                    ? <><div className="spinner" style={{ width: 14, height: 14 }} /> Saving…</>
+                    : <><CheckCircle size={14} /> Save Attendance</>}
                 </button>
               </div>
             </div>
           </div>
 
+          {/* Info bar */}
           <div className="card" style={{ padding: 0 }}>
-            <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Subject: <strong style={{ color: 'var(--text-primary)' }}>{profile.subject}</strong> {profile.subjectCode && `(${profile.subjectCode})`} — Click row to toggle
+            <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>Subject: <strong style={{ color: 'var(--text-primary)' }}>{profile.subject}</strong> {profile.subjectCode && `(${profile.subjectCode})`} — Click a row to toggle</span>
+              <span style={{ fontSize: '0.75rem', background: 'var(--bg-elevated)', padding: '3px 10px', borderRadius: 99, border: '1px solid var(--border)' }}>
+                📅 {attDate}
+              </span>
             </div>
+
             {attLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, gap: 10 }}>
                 <div className="spinner" /><span style={{ color: 'var(--text-muted)' }}>Loading…</span>
@@ -1041,38 +975,94 @@ export default function FacultyDashboard() {
                 {students.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>No students loaded.</div>
                 ) : students.map(s => {
-                  const status = attendance[s.enrollmentNumber] || 'Present'
+                  const status    = attendance[s.enrollmentNumber] || 'Present'
                   const isPresent = status === 'Present'
                   return (
-                    <div key={s.enrollmentNumber}
-                      onClick={() => setAttendance(prev => ({ ...prev, [s.enrollmentNumber]: isPresent ? 'Absent' : 'Present' }))}
-                      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 12, cursor: 'pointer', background: isPresent ? '#f0fdf4' : '#fff1f2', border: `1.5px solid ${isPresent ? '#bbf7d0' : '#fecdd3'}`, transition: 'all 0.15s' }}>
-                      <div style={{ width: 38, height: 38, borderRadius: 10, background: isPresent ? '#dcfce7' : '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 15, color: isPresent ? '#16a34a' : '#dc2626', fontFamily: 'Outfit, sans-serif', flexShrink: 0 }}>
+                    <div
+                      key={s.enrollmentNumber}
+                      onClick={() => setAttendance(prev => ({
+                        ...prev,
+                        [s.enrollmentNumber]: isPresent ? 'Absent' : 'Present',
+                      }))}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
+                        background: isPresent ? '#f0fdf4' : '#fff1f2',
+                        border: `1.5px solid ${isPresent ? '#bbf7d0' : '#fecdd3'}`,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {/* Avatar */}
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                        background: isPresent ? '#dcfce7' : '#fee2e2',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 800, fontSize: 16, color: isPresent ? '#16a34a' : '#dc2626',
+                        fontFamily: 'Outfit, sans-serif',
+                      }}>
                         {s.name?.charAt(0)}
                       </div>
+
+                      {/* Info */}
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b' }}>{s.name}</div>
-                        <div style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', marginTop: 1 }}>{s.enrollmentNumber}</div>
+                        <div style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', marginTop: 1 }}>
+                          {s.enrollmentNumber} • Div {s.division}
+                        </div>
                       </div>
-                      <div style={{ width: 44, height: 24, borderRadius: 99, position: 'relative', background: isPresent ? '#16a34a' : '#cbd5e1', transition: 'background 0.2s', flexShrink: 0 }}>
-                        <div style={{ position: 'absolute', top: 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', left: isPresent ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+
+                      {/* CGPA badge */}
+                      <div style={{ fontSize: 11, color: '#64748b', marginRight: 8 }}>
+                        CGPA: <strong>{s.cgpa?.toFixed(1)}</strong>
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, minWidth: 52, textAlign: 'right', color: isPresent ? '#16a34a' : '#dc2626' }}>{status}</div>
+
+                      {/* Toggle switch */}
+                      <div style={{
+                        width: 48, height: 26, borderRadius: 99, position: 'relative', flexShrink: 0,
+                        background: isPresent ? '#16a34a' : '#cbd5e1',
+                        transition: 'background 0.2s',
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 4, width: 18, height: 18,
+                          borderRadius: '50%', background: '#fff',
+                          left: isPresent ? 26 : 4,
+                          transition: 'left 0.2s',
+                          boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+                        }} />
+                      </div>
+
+                      {/* Label */}
+                      <div style={{ fontSize: 12, fontWeight: 700, minWidth: 52, textAlign: 'right', color: isPresent ? '#16a34a' : '#dc2626' }}>
+                        {status}
+                      </div>
                     </div>
                   )
                 })}
               </div>
             )}
+
+            {/* Footer summary */}
+            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-elevated)', borderRadius: '0 0 12px 12px' }}>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                {students.length} students • {present} present • {absent} absent
+              </div>
+              <button className="btn btn-primary" onClick={submitAttendance} disabled={submittingAtt} style={{ fontSize: '0.85rem' }}>
+                {submittingAtt
+                  ? <><div className="spinner" style={{ width: 14, height: 14 }} /> Saving…</>
+                  : <><CheckCircle size={14} /> Save Attendance for {attDate}</>}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* ══ ATTENDANCE CALCULATOR TAB ══ */}
-      {tab === 'att_calc' && <AttendanceCalculatorTab profile={profile} />}
+      {tab === 'att_calc' && <AttendanceCalculatorTab profile={profile} students={students} />}
 
       {/* ══ MARKS TAB ══ */}
       {tab === 'marks' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          {/* Manual marks */}
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
               <PenLine size={15} color="var(--accent)" />
@@ -1108,6 +1098,7 @@ export default function FacultyDashboard() {
             </form>
           </div>
 
+          {/* Excel upload */}
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
               <FileSpreadsheet size={15} color="var(--blue)" />
@@ -1121,8 +1112,13 @@ export default function FacultyDashboard() {
                 ))}
               </div>
             </div>
-            <div onClick={() => fileRef.current?.click()} style={{ border: `2px dashed ${excelFile ? '#16a34a' : 'var(--border-light)'}`, borderRadius: 12, padding: '28px 16px', textAlign: 'center', cursor: 'pointer', marginBottom: 14, background: excelFile ? '#f0fdf4' : 'var(--bg-elevated)', transition: 'all 0.2s' }}>
-              <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={e => { setExcelFile(e.target.files[0]); setUploadResult(null) }} />
+            <div onClick={() => fileRef.current?.click()} style={{
+              border: `2px dashed ${excelFile ? '#16a34a' : 'var(--border-light)'}`,
+              borderRadius: 12, padding: '28px 16px', textAlign: 'center', cursor: 'pointer',
+              marginBottom: 14, background: excelFile ? '#f0fdf4' : 'var(--bg-elevated)', transition: 'all 0.2s',
+            }}>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
+                onChange={e => { setExcelFile(e.target.files[0]); setUploadResult(null) }} />
               <FileSpreadsheet size={32} color={excelFile ? '#16a34a' : 'var(--text-muted)'} style={{ marginBottom: 8 }} />
               {excelFile ? (
                 <>
@@ -1142,11 +1138,14 @@ export default function FacultyDashboard() {
             {uploadResult && (
               <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 10, fontSize: '0.8rem' }}>
                 <div style={{ fontWeight: 700, color: 'var(--green)', marginBottom: 4 }}>✓ Saved: {uploadResult.data?.saved?.length || 0}</div>
-                {uploadResult.data?.notFound?.length > 0 && <div style={{ color: 'var(--red)' }}>✗ Not found: {uploadResult.data.notFound.join(', ')}</div>}
+                {uploadResult.data?.notFound?.length > 0 && (
+                  <div style={{ color: 'var(--red)' }}>✗ Not found: {uploadResult.data.notFound.join(', ')}</div>
+                )}
               </div>
             )}
           </div>
 
+          {/* Marks list */}
           <div className="card" style={{ gridColumn: '1 / -1', padding: 0 }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <PenLine size={15} color="var(--blue)" />
@@ -1173,7 +1172,9 @@ export default function FacultyDashboard() {
                           {m.uploadedVia}
                         </span>
                       </td>
-                      <td style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{m.updatedAt ? new Date(m.updatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                        {m.updatedAt ? new Date(m.updatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
